@@ -1,0 +1,282 @@
+@extends('layouts.shipping.master')
+@section('title')
+    @lang('admin.orders.manage_orders')
+@endsection
+@section('css')
+    <!--datatable css-->
+    <link href="{{URL::asset('build/datatables/dataTables.bootstrap5.min.css')}}" rel="stylesheet" type="text/css"/>
+    <!--datatable responsive css-->
+    <link href="{{URL::asset('build/datatables/responsive.bootstrap.min.css')}}" rel="stylesheet"
+          type="text/css"/>
+    <link href="{{URL::asset('build/datatables/buttons.dataTables.min.css')}}" rel="stylesheet"
+          type="text/css"/>
+    <link href="{{ URL::asset('build/libs/sweetalert2/sweetalert2.min.css') }}" rel="stylesheet" type="text/css"/>
+@endsection
+@section('content')
+    @component('components.breadcrumb')
+        @slot('li_1')
+            @lang('admin.orders.show_orders')
+        @endslot
+        @slot('title')
+            @lang('admin.orders.show_orders')
+        @endslot
+    @endcomponent
+
+    <div class="row">
+        <div class="col-xl-9">
+            <div class="card">
+                <div class="card-header">
+                    <div class="d-flex align-items-center">
+                        <h5 class="card-title flex-grow-1 mb-0">@lang('admin.orders.show_orders') #{{$specialOrder->id}}</h5>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive table-card">
+                        <table class="table table-nowrap align-middle table-borderless mb-0">
+                            <thead class="table-light text-muted">
+                            <tr>
+                                <th scope="col">@lang('admin.orders.product_details')</th>
+                                <th scope="col">@lang('admin.orders.price_unit') </th>
+                                <th scope="col">@lang('admin.orders.quantity')</th>
+                                <th scope="col">@lang('admin.vendors.name')</th>
+                                <th scope="col" class="text-end">@lang('admin.orders.price_total')</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            @foreach($specialOrder->products as $product)
+
+                                <tr>
+                                    <td>
+                                        <div class="d-flex">
+                                            <div class="flex-shrink-0 avatar-md bg-light rounded p-1">
+                                                <img src="{{ $product->image }}" alt=""
+                                                     class="img-fluid d-block">
+                                            </div>
+                                            <div class="flex-grow-1 ms-3">
+                                                <h5 class="fs-15">
+                                                        {{$product->translations[0]->name}}
+                                                </h5>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>{{$product->pivot->unit_price}}</td>
+                                    <td>{{$product->pivot->quantity}}</td>
+                                    <td>{{$product->vendor->name}}</td>
+                                    <td class="fw-medium text-end">
+                                        {{$product->pivot->total}}
+                                    </td>
+                                </tr>
+                            @endforeach
+                            <tr class="border-top border-top-dashed">
+                                <td colspan="3"></td>
+                                <td colspan="2" class="fw-medium p-0">
+                                    <table class="table table-borderless mb-0">
+                                        <tbody>
+                                        <tr>
+                                            <td>@lang('admin.orders.sub_total') :</td>
+                                            <td class="text-end">{{$specialOrder->sub_total}}</td>
+                                        </tr>
+                                        <tr>
+                                            <td>@lang('admin.orders.tax') :</td>
+                                            <td class="text-end">{{$specialOrder->tax}}</td>
+                                        </tr>
+                                        <tr>
+                                            <td>@lang('admin.orders.vat') :</td>
+                                            <td class="text-end">{{$specialOrder->vat}}</td>
+                                        </tr>
+                                        <tr class="border-top border-top-dashed">
+                                            <th scope="row">@lang('admin.orders.total') :</th>
+                                            <td class="text-end">{{$specialOrder->total}}</td>
+                                        </tr>
+                                        </tbody>
+                                    </table>
+                                </td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <!--end card-->
+            <div class="card">
+                {{--  <div class="card-header">
+                    <div class="d-sm-flex align-items-center">
+                        <h5 class="card-title flex-grow-1 mb-0">@lang('admin.orders.order_status') </h5>
+                        <div class="flex-shrink-0 mt-2 mt-sm-0">
+                            <a href="javasccript:void(0;)" class="btn btn-soft-primary btn-sm mt-2 mt-sm-0"><i
+                                    class="ri-map-pin-line align-middle me-1"></i> @lang('admin.orders.order_status_change')  </a>
+                        </div>
+                    </div>
+                </div>  --}}
+                <div class="card-body">
+                    <div class="profile-timeline">
+                        <div class="accordion accordion-flush" id="accordionFlushExample">
+                            <div class="accordion-item border-0">
+                                <div class="accordion-header" id="headingFive">
+                                    <a class="accordion-button p-2 shadow-none" data-bs-toggle="collapse"
+                                       href="#collapseFile" aria-expanded="false">
+                                        <div class="d-flex align-items-center">
+                                            <div class="flex-shrink-0 avatar-xs">
+                                                <div class="avatar-title bg-light text-primary rounded-circle">
+                                                    <i class="mdi mdi-package-variant"></i>
+                                                </div>
+                                            </div>
+                                            <div class="flex-grow-1 ms-3">
+                                                <h6 class="fs-14 mb-0 fw-semibold">{{\App\Enums\OrderStatus::getStatusWithClass($specialOrder->status)['name']}}</h6>
+                                            </div>
+                                        </div>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        <!--end accordion-->
+                    </div>
+                </div>
+            </div>
+            <!--end card-->
+            <!-- Button trigger modal -->
+            <!-- Button trigger modal -->
+            @if($specialOrder->status == 'accepted_by_vendor' && $specialOrder->shipping_method == 'cif')
+                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#exampleModal">
+                    @lang('admin.shippingMethods.add_offer')
+                </button>
+            @endif
+            <!-- Modal -->
+            <!-- Modal -->
+            <div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="exampleModalLabel">Modal title</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <form action="{{ route('shipping.add.offer') }}" method="POST">
+                                @csrf
+                                <input type="hidden" name="special_order_id" value="{{ $specialOrder->id }}">
+                                <input type="hidden" name="client_id" value="{{ $specialOrder->client_id }}">
+                                <div class="mb-3">
+                                    <label for="exampleFormControlInput1" class="form-label">@lang('admin.shippingMethods.offer_price')</label>
+                                    <input required="required" name="price" type="number" class="form-control" id="exampleFormControlInput1" placeholder="{{ trans('admin.shippingMethods.offer_price') }}">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="exampleFormControlInput2" class="form-label">@lang('admin.shippingMethods.expect_date_from')</label>
+                                    <input required="required" name="expect_date_from" type="date" class="form-control" id="exampleFormControlInput2">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="exampleFormControlInput3" class="form-label">@lang('admin.shippingMethods.expect_date_to')</label>
+                                    <input required="required" name="expect_date_to" type="date" class="form-control" id="exampleFormControlInput3">
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                    <button type="submit" class="btn btn-primary">Save changes</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!--end col-->
+        <div class="col-xl-3">
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="d-flex text-center">
+                        <h5 class="card-title flex-grow-1 mb-0"> @lang('admin.orders.client_details')</h5>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled mb-0 vstack gap-3">
+                        <li>
+                            <div class="d-flex align-items-center">
+                                <div class="flex-shrink-0">
+                                    <img src="{{$specialOrder->client->image}}" alt=""
+                                         class="avatar-sm rounded">
+                                </div>
+                                <div class="flex-grow-1 ms-3">
+                                    <h6 class="fs-14 mb-1">{{$specialOrder->client->name}}</h6>
+                                    <p class="text-muted mb-0"> @lang('admin.orders.shipping_details') </p>
+                                </div>
+                            </div>
+                        </li>
+                        <li><i class="ri-mail-line me-2 align-middle text-muted fs-16"></i> {{$specialOrder->client->email}}</li>
+                        <li><i class="ri-phone-line me-2 align-middle text-muted fs-16"></i>{{$specialOrder->client->phone}}</li>
+                    </ul>
+                </div>
+            </div>
+            <!--end card-->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0"><i class="ri-map-pin-line align-middle me-1 text-muted"></i>  @lang('admin.orders.shipping_details')</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled vstack gap-2 fs-13 mb-0">
+                        <li class="fw-medium fs-14">{{$specialOrder->client->name}}</li>
+                        <li>{{$specialOrder->client_address->phone}}</li>
+                        <li>{{$specialOrder->client_address->address}}</li>
+                    </ul>
+                </div>
+            </div>
+            <!--end card-->
+
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0"><i class="ri-secure-payment-line align-bottom me-1 text-muted"></i>
+                        @lang('admin.orders.payment_details')</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-2">
+                        <div class="flex-shrink-0">
+                            <p class="text-muted mb-0">@lang('admin.orders.transactions'): </p>
+                        </div>
+                        <div class="flex-grow-1 ms-2">
+                            <h6 class="mb-0">{{$specialOrder->transaction_id}}</h6>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center mb-2">
+                        <div class="flex-shrink-0">
+                            <p class="text-muted mb-0">@lang('admin.orders.payment_method'):</p>
+                        </div>
+                        <div class="flex-grow-1 ms-2">
+                            <h6 class="mb-0">{{$specialOrder->payment_method}}</h6>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0">
+                            <p class="text-muted mb-0">@lang('admin.orders.total'):</p>
+                        </div>
+                        <div class="flex-grow-1 ms-2">
+                            <h6 class="mb-0">{{$specialOrder->total}}</h6>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!--end card-->
+        </div>
+        <!--end col-->
+    </div>
+    <!--end row-->
+@endsection
+@section('script')
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"
+            integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4=" crossorigin="anonymous"></script>
+
+    <script src="{{URL::asset('build/datatables/jquery.dataTables.min.js')}}"></script>
+    <script src="{{URL::asset('build/datatables/dataTables.bootstrap5.min.js')}}"></script>
+    <script src="{{URL::asset('build/datatables/dataTables.responsive.min.js')}}"></script>
+    <script src="{{URL::asset('build/datatables/dataTables.buttons.min.js')}}"></script>
+    <script src="{{URL::asset('build/datatables/buttons.print.min.js')}}"></script>
+    <script src="{{URL::asset('build/datatables/buttons.html5.min.js')}}"></script>
+    <script src="{{URL::asset('build/datatables/vfs_fonts.js')}}"></script>
+    <script src="{{URL::asset('build/datatables/pdfmake.min.js')}}"></script>
+    <script src="{{URL::asset('build/datatables/jszip.min.js')}}"></script>
+    <script src="{{ URL::asset('build/js/pages/datatables.init.js') }}"></script>
+
+    <script src="{{ URL::asset('build/libs/sweetalert2/sweetalert2.min.js') }}"></script>
+    <script src="{{ URL::asset('build/js/pages/sweetalerts.init.js') }}"></script>
+    <script src="{{ URL::asset('build/js/app.js') }}"></script>
+
+@endsection
+<x-form.alert-data></x-form.alert-data>

@@ -1,0 +1,166 @@
+<?php
+namespace App\Services\SubVendor;
+use App\Helpers\FileUpload;
+use App\Http\Requests\Admin\ProductRequest;
+use App\Repositories\Admin\AttributeRepository;
+use App\Repositories\Admin\CategoryRepository;
+use App\Repositories\Admin\CertificateRepository;
+use App\Repositories\Admin\LanguageRepository;
+use App\Repositories\Admin\PackageRepository;
+use App\Repositories\Admin\QualityRepository;
+use App\Repositories\Admin\SizeRepository;
+use App\Repositories\Admin\TypeRepository;
+use App\Repositories\Admin\UnitRepository;
+use App\Repositories\Admin\VendorRepository;
+use App\Repositories\SubVendor\ProductRepository;
+use Exception;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+
+class ProductServices{
+    use FileUpload;
+    public function __construct(public ProductRepository $productRepository, public LanguageRepository $languageRepository,
+                                public CategoryRepository $categoryRepository
+        , public CertificateRepository $certificateRepository, public UnitRepository $unitRepository, public TypeRepository $typeRepository
+        , public VendorRepository $vendorRepository, public QualityRepository $qualityRepository, public PackageRepository $packageRepository, public SizeRepository $sizeRepository, public AttributeRepository $attributeRepository)
+    {
+    }
+
+    /**
+     *
+     * All  Products.
+     *
+     */
+    public function getAllProducts($request): \Illuminate\Contracts\View\View|\Illuminate\Contracts\View\Factory|\Illuminate\Http\JsonResponse|\Illuminate\Contracts\Foundation\Application
+    {
+        try {
+            $products = $this->productRepository->getAllProducts($request);
+            return view("sub-vendor.products.index", compact('products'));
+        } catch (Exception$e) {
+            return response()->json(['status' => 'general_error', 'error' => $e->getMessage(), 'message' => __('admin.general_error')]);
+        }
+    }
+
+    /**
+     * create  Products.
+     */
+    public function create(): \Illuminate\Contracts\View\View|\Illuminate\Contracts\View\Factory|\Illuminate\Http\JsonResponse|\Illuminate\Contracts\Foundation\Application
+    {
+        try{
+            $vendors = $this->vendorRepository->getAllVendors();
+            $categories = $this->categoryRepository->getAllCategoriesForm();
+            $certificates = $this->certificateRepository->getAllCertificatesForm();
+            $units = $this->unitRepository->getAllUnitsForm();
+            $types = $this->typeRepository->getAllTypesForm();
+            $packages = $this->packageRepository->getAllPackagesForm();
+            $sizes = $this->sizeRepository->getAllSizesForm();
+            $qualities = $this->qualityRepository->getAllQualitiesForm();
+            $languages = $this->languageRepository->all();
+            $attribute_row = 0;
+            $attributes = $this->attributeRepository->getAllAttributesForm();
+            return view("sub-vendor.products.create", compact('categories', 'attributes', 'attribute_row', 'languages', 'certificates', 'types', 'units', 'vendors', 'qualities', 'packages', 'sizes'));
+        } catch (Exception $e) {
+            return response()->json(['status' => 'general_error', 'error_message' => $e->getMessage(), 'message' => __('admin.general_error')]);
+        }
+    }
+
+    /**
+     *
+     * Create New Product.
+     *
+     *
+     */
+    public function storeProduct(ProductRequest $request)
+    {
+        DB::beginTransaction();
+        $data_request = $request->except('image');
+
+        if (auth()->guard('vendor')->check())
+            $data_request['vendor_id'] = auth()->guard('vendor')->user()->vendor_id;
+
+        if (isset($request->image))
+            $data_request['image'] = $this->save_file($request->image, 'products');
+        try {
+            $product = $this->productRepository->store($data_request);
+            if ($product) {
+                DB::commit();
+                return redirect()->route('sub-vendor.products.index')->with('success', true);
+            }
+        } catch (Exception $e) {
+            DB::rollBack();
+            return ['status' => 'general_error', 'error' => $e->getMessage(), 'message' => __('admin.general_error')];
+        }
+    }
+
+
+    /**
+     * edit  Languages.
+     */
+    public function edit($id)
+    {
+
+        try {
+            $product = $this->productRepository->show($id);
+            $product_certificates = $this->productRepository->product_certificates($id);
+            $vendors = $this->vendorRepository->getAllVendors();
+            $categories = $this->categoryRepository->getAllCategoriesForm();
+            $certificates = $this->certificateRepository->getAllCertificatesForm();
+            $units = $this->unitRepository->getAllUnitsForm();
+            $types = $this->typeRepository->getAllTypesForm();
+            $product_languages = $this->productRepository->product_languages($id);
+            $qualities = $this->qualityRepository->getAllQualitiesForm();
+            $packages = $this->packageRepository->getAllPackagesForm();
+            $sizes = $this->sizeRepository->getAllSizesForm();
+            $languages = $this->languageRepository->all();
+            $attribute_row = 0;
+            $attributes = $this->attributeRepository->getAllAttributesForm();
+            $product_attribute = $this->attributeRepository->getProductAttributes($product->id);
+
+            return view("sub-vendor.products.edit", compact('categories', 'product_languages', 'product_attribute', 'attributes', 'attribute_row', 'product', 'product_certificates', 'languages', 'certificates', 'types', 'units', 'vendors', 'qualities', 'packages', 'sizes'));
+        } catch (Exception $e) {
+            return redirect()->back()->with(['status' => 'general_error', 'message' => __('admin.general_error')]);
+        }
+    }
+
+    /**
+     * Update Product.
+     *
+     * @param integer $product_id
+     * @param Request $request
+     * @return RedirectResponse
+     */
+    public function updateProduct(ProductRequest $request, int $product_id): RedirectResponse
+    {
+        $data_request = $request->except('image');
+        if (isset($request->image))
+            $data_request['image'] = $this->save_file($request->image, 'products');
+
+        $product = $this->productRepository->update($data_request, $product_id);
+        try {
+            if ($product)
+                return redirect()->route('sub-vendor.products.index')->with('success', true);
+        } catch (Exception $e) {
+            return redirect()->back()->with(['status' => 'general_error', 'message' => __('admin.general_error')]);
+        }
+    }
+
+    /**
+     * Delete Product.
+     *
+     * @param int $product_id
+     * @return RedirectResponse
+     */
+    public function deleteProduct(int $product_id): RedirectResponse
+    {
+        try {
+            $product = $this->productRepository->show($product_id);
+            if ($product) {
+                $this->productRepository->destroy($product_id);
+                return redirect()->route('sub-vendor.products.index')->with('success', true);
+            }
+        } catch (Exception $e) {
+            return redirect()->back()->with(['status' => 'general_error', 'message' => __('admin.general_error')]);
+        }
+    }
+}
